@@ -361,14 +361,14 @@ public class MainActivity extends AppCompatActivity {
 
     private void loadModel()
     {
+        String[] tensorNames = new String[]{"detection_classes:0", "detection_boxes:0"};
         try
         {
             tfClassifier = TensorFlowClassifier.create(getAssets(), "TensorFlow",
                     "frozen_inference_graph.pb",
                     "labels.txt",
-                    320,
                     "image_tensor:0",
-                    "detection_classes:0",
+                    tensorNames,
                     true);
         }
         catch (IOException e)
