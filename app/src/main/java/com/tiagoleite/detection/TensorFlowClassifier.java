@@ -2,6 +2,7 @@ package com.tiagoleite.detection;
 
 import android.content.res.AssetManager;
 import android.util.Log;
+import android.util.SparseArray;
 
 import org.tensorflow.contrib.android.TensorFlowInferenceInterface;
 
@@ -9,7 +10,9 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class TensorFlowClassifier implements Classifier
 {
@@ -19,7 +22,7 @@ public class TensorFlowClassifier implements Classifier
     private String name, inputName, outputName;
     private int inputSize;
     private boolean feedKeepProb;
-    private List<String> labels;
+    private SparseArray<String> labels;
     private float[] output;
     private String[] outputNames;
 
@@ -29,9 +32,9 @@ public class TensorFlowClassifier implements Classifier
     }
 
     @Override
-    public Classification recognize(final byte pixels[])
+    public Classification recognize(final byte pixels[], int w, int h)
     {
-        tfHelper.feed(inputName, pixels, 1, inputSize, inputSize, 3);
+        tfHelper.feed(inputName, pixels, 1, w, h, 3);
 
         /*if (feedKeepProb)
             tfHelper.feed("keep_prob", new float[]{1});*/
@@ -39,7 +42,7 @@ public class TensorFlowClassifier implements Classifier
         tfHelper.run(outputNames);
         tfHelper.fetch(outputName, output);
         Classification ans = new Classification();
-        Log.d("debug", "L:"+output.length);
+        Log.d("debug", "out size:"+output.length);
 
         for (int i = 0; i < output.length; i++)
         {
@@ -47,16 +50,21 @@ public class TensorFlowClassifier implements Classifier
             if (output[i] > THRESHOLD && output[i] > ans.getConf())
                 ans.update(output[i], labels.get(i));
         }
+        ans.update(output[0], labels.get((int)(output[0])));
+
         return ans;
     }
 
-    private static List<String> readLabels(AssetManager am, String filename) throws IOException
+    private static SparseArray<String> readLabels(AssetManager am, String filename) throws IOException
     {
         BufferedReader br = new BufferedReader(new InputStreamReader(am.open(filename)));
         String line;
-        List<String> labels = new ArrayList<>();
+        SparseArray<String> labels = new SparseArray<>();
         while((line = br.readLine()) != null)
-            labels.add(line);
+        {
+            String tokens[] = line.split(":");
+            labels.put(Integer.parseInt(tokens[0]), tokens[1]);
+        }
         br.close();
         return labels;
     }
