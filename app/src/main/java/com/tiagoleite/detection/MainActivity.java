@@ -198,13 +198,24 @@ public class MainActivity extends AppCompatActivity {
                         Canvas tempCanvas = new Canvas(bm);
                         tempCanvas.drawBitmap(bm, 0, 0, null);
                         Paint paint = new Paint();
-                        paint.setStrokeWidth(4f);
+                        paint.setColor(Color.TRANSPARENT);
+                        paint.setStyle(Paint.Style.FILL);
 
+                        // FILL
+                        /*tempCanvas.drawRect(box[1]*(float)bm.getWidth(),
+                                box[0]*(float)bm.getHeight(),
+                                box[3]*(float)bm.getWidth(),
+                                box[0]*(float)bm.getHeight(), paint);*/
+
+                        paint.setStrokeWidth(10);
                         paint.setColor(Color.RED);
-                        tempCanvas.drawLine(box[1]*(float)bm.getWidth(),
+                        paint.setStyle(Paint.Style.STROKE);
+                        // BORDER
+                        tempCanvas.drawRect(box[1]*(float)bm.getWidth(),
                                 box[0]*(float)bm.getHeight(),
                                 box[3]*(float)bm.getWidth(),
                                 box[2]*(float)bm.getHeight(), paint);
+
                         final Bitmap ff = bm;
                         runOnUiThread(new Runnable() {
 
