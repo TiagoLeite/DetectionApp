@@ -5,8 +5,13 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.ImageFormat;
+import android.graphics.Matrix;
+import android.graphics.Paint;
+import android.graphics.Rect;
+import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.*;
 import android.hardware.camera2.params.StreamConfigurationMap;
@@ -29,6 +34,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.IOException;
+import java.io.OptionalDataException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -47,7 +53,7 @@ public class MainActivity extends AppCompatActivity {
     private TextureView textureView;
     private CaptureRequest.Builder captureRequestBuilder;
     private TextView textImageLabel;
-    private static final int FINAL_W = 256, FINAL_H = 256;
+    private static final int FINAL_W = 1200, FINAL_H = 822;
 
     CameraDevice.StateCallback stateCallback = new CameraDevice.StateCallback() {
         @Override
@@ -136,99 +142,123 @@ public class MainActivity extends AppCompatActivity {
         {
             CameraCharacteristics characteristics = cameraManager.getCameraCharacteristics(cameraDevice.getId());
             Size[] jpegSizes = null;
-            if (characteristics != null)
+            jpegSizes = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
+                .getOutputSizes(ImageFormat.JPEG);
+            int w = 640;
+            int h = 480;
+            if (jpegSizes != null && jpegSizes.length > 0)
             {
-                jpegSizes = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
-                    .getOutputSizes(ImageFormat.JPEG);
-                int w = 640;
-                int h = 480;
-                if (jpegSizes != null && jpegSizes.length > 0)
-                {
-                    w = jpegSizes[0].getWidth();
-                    h = jpegSizes[0].getHeight();
-                }
-                ImageReader reader = ImageReader.newInstance(w, h, ImageFormat.JPEG, 1);
-                List<Surface> outputSurface = new ArrayList<>(2);
-                outputSurface.add(reader.getSurface());
-                outputSurface.add(new Surface(textureView.getSurfaceTexture()));
+                w = jpegSizes[0].getWidth();
+                h = jpegSizes[0].getHeight();
+            }
+            ImageReader reader = ImageReader.newInstance(w, h, ImageFormat.JPEG, 1);
+            List<Surface> outputSurface = new ArrayList<>(2);
+            outputSurface.add(reader.getSurface());
+            outputSurface.add(new Surface(textureView.getSurfaceTexture()));
 
-                final CaptureRequest.Builder captureBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
-                captureBuilder.addTarget(reader.getSurface());
-                captureBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
-                int rotation = getWindowManager().getDefaultDisplay().getRotation();
-                captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, ORIENTATIONS.get(rotation));
+            final CaptureRequest.Builder captureBuilder = cameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
+            captureBuilder.addTarget(reader.getSurface());
+            captureBuilder.set(CaptureRequest.CONTROL_MODE, CameraMetadata.CONTROL_MODE_AUTO);
 
-                ImageReader.OnImageAvailableListener readListener = new ImageReader.OnImageAvailableListener() {
-                    @Override
-                    public void onImageAvailable(ImageReader reader) {
-                        Image image = null;
-                        try
-                        {
-                            image = reader.acquireLatestImage();
-                            ByteBuffer buffer = image.getPlanes()[0].getBuffer();
-                            byte [] bytes = new byte[buffer.capacity()];
-                            buffer.get(bytes);
-                            final Bitmap bm = Bitmap.createScaledBitmap
-                                    (BitmapFactory.decodeByteArray(bytes, 0, bytes.length),
-                                            FINAL_W, FINAL_H, true);
-                            byte[] arrayImage = getPixelsArray(bm);
-                            Classification cls = tfClassifier.recognize(arrayImage, FINAL_W, FINAL_H);
-                            final String label = cls.getLabel();
-                            Log.d("debug", "Res:" + label + " "+ cls.getConf());
+            int rotation = getWindowManager().getDefaultDisplay().getRotation();
+            captureBuilder.set(CaptureRequest.JPEG_ORIENTATION, rotation);
 
-                            runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    ImageView imageView = findViewById(R.id.image_view);
-                                    imageView.setImageBitmap(bm);
-                                    textImageLabel.setText(label);
-                                }
-                            });
+            ImageReader.OnImageAvailableListener readListener = new ImageReader.OnImageAvailableListener() {
+                @Override
+                public void onImageAvailable(ImageReader reader) {
+                    Image image = null;
+                    try
+                    {
+                        image = reader.acquireLatestImage();
+                        ByteBuffer buffer = image.getPlanes()[0].getBuffer();
+                        byte [] bytes = new byte[buffer.capacity()];
+                        buffer.get(bytes);
 
-                            //save(bytes);
-                        }
-                        catch (Exception e)
-                        {
-                            Log.d("debug", e.getMessage() + e.getClass());
-                        }
-                        finally {
-                            if (image != null)
-                                image.close();
-                        }
-                    }
-                };
-                reader.setOnImageAvailableListener(readListener, backgroundHandler);
+                        Matrix matrix = new Matrix();
+                        matrix.postRotate(90);
+                        BitmapFactory.Options opt = new BitmapFactory.Options();
+                        opt.inScaled = false;
+                        opt.inPremultiplied = false;
+                        opt.inMutable = true;
 
-                final CameraCaptureSession.CaptureCallback captureListener =
-                        new CameraCaptureSession.CaptureCallback() {
+                        Bitmap bm = BitmapFactory.decodeByteArray(bytes, 0, bytes.length, opt);
+
+                        bm = Bitmap.createBitmap(bm, 0, 0, bm.getWidth(), bm.getHeight(), matrix, true);
+
+                        /*bm = Bitmap.createScaledBitmap(bm, bm.getWidth()/2, bm.getHeight()/2,
+                                true);*/
+
+                        byte[] arrayImage = getPixelsArray(bm);
+
+                        Classification cls = tfClassifier.recognize(arrayImage, bm.getWidth(), bm.getHeight());
+                        final String label = cls.getLabel() + " " + cls.getConf();
+                        float[] box = cls.getBox();
+                        Log.d("debug", "Res:" + label + " "+ cls.getConf());
+
+                        Canvas tempCanvas = new Canvas(bm);
+                        tempCanvas.drawBitmap(bm, 0, 0, null);
+                        Paint paint = new Paint();
+                        paint.setStrokeWidth(4f);
+
+                        paint.setColor(Color.RED);
+                        tempCanvas.drawLine(box[1]*(float)bm.getWidth(),
+                                box[0]*(float)bm.getHeight(),
+                                box[3]*(float)bm.getWidth(),
+                                box[2]*(float)bm.getHeight(), paint);
+                        final Bitmap ff = bm;
+                        runOnUiThread(new Runnable() {
+
                             @Override
-                            public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull TotalCaptureResult result) {
-                                super.onCaptureCompleted(session, request, result);
-                                createCameraPreview();
+                            public void run() {
+                                ImageView imageView = findViewById(R.id.image_view);
+                                imageView.setImageBitmap(ff);
+                                textImageLabel.setText(label);
                             }
-                        };
-
-                cameraDevice.createCaptureSession(outputSurface, new CameraCaptureSession.StateCallback() {
-                    @Override
-                    public void onConfigured(@NonNull CameraCaptureSession session) {
-                        try
-                        {
-                            session.capture(captureBuilder.build(), captureListener, backgroundHandler);
-                        }
-                        catch (Exception e)
-                        {
-                            Log.d("debug", e.getMessage() + e.getClass());
-                        }
+                        });
+                        //save(bytes);
                     }
-
-                    @Override
-                    public void onConfigureFailed(@NonNull CameraCaptureSession session) {
-
+                    catch (Exception e)
+                    {
+                        Log.d("debug", e.getMessage() + e.getClass());
                     }
-                }, backgroundHandler);
+                    finally {
+                        if (image != null)
+                            image.close();
+                    }
+                }
+            };
+            reader.setOnImageAvailableListener(readListener, backgroundHandler);
+
+            final CameraCaptureSession.CaptureCallback captureListener =
+                    new CameraCaptureSession.CaptureCallback() {
+                        @Override
+                        public void onCaptureCompleted(@NonNull CameraCaptureSession session, @NonNull CaptureRequest request, @NonNull TotalCaptureResult result) {
+                            super.onCaptureCompleted(session, request, result);
+                            createCameraPreview();
+                        }
+                    };
+
+            cameraDevice.createCaptureSession(outputSurface, new CameraCaptureSession.StateCallback() {
+                @Override
+                public void onConfigured(@NonNull CameraCaptureSession session) {
+                    try
+                    {
+                        session.capture(captureBuilder.build(), captureListener, backgroundHandler);
+                    }
+                    catch (Exception e)
+                    {
+                        Log.d("debug", e.getMessage() + e.getClass());
+                    }
+                }
+
+                @Override
+                public void onConfigureFailed(@NonNull CameraCaptureSession session) {
+
+                }
+            }, backgroundHandler);
 
                 
-            }
+
         }
         catch (Exception e)
         {
@@ -345,15 +375,17 @@ public class MainActivity extends AppCompatActivity {
         byte[] pixelsRet = new byte[h*w*3];
         bm.getPixels(pixels, 0, w, 0, 0, w, h);
 
+        int cont=0;
+
         for (int i = 0; i < h; i++)
             for (int j = 0; j < w; j++)
             {
                 int redValue = Color.red(pixels[i * w + j]);
                 int blueValue = Color.blue(pixels[i * w + j]);
                 int greenValue = Color.green(pixels[i * w + j]);
-                pixelsRet[i * w + j] = (byte)redValue;
-                pixelsRet[i * w + j + h*w] = (byte)greenValue;
-                pixelsRet[i * w + j + 2*h*w] = (byte)blueValue;
+                pixelsRet[cont++] = (byte)redValue ;
+                pixelsRet[cont++] = (byte)greenValue;
+                pixelsRet[cont++] = (byte)blueValue;
             }
 
         return pixelsRet;
@@ -361,7 +393,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void loadModel()
     {
-        String[] tensorNames = new String[]{"detection_classes:0", "detection_boxes:0"};
+        String[] tensorNames = new String[]{"detection_classes:0", "detection_boxes:0", "detection_scores:0"};
         try
         {
             tfClassifier = TensorFlowClassifier.create(getAssets(), "TensorFlow",

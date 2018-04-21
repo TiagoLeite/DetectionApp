@@ -17,7 +17,7 @@ import java.util.Map;
 public class TensorFlowClassifier implements Classifier
 {
     private static final float THRESHOLD = 0.1f;
-    private static final int[] NUM_CLASSES = new int[]{100, 400};
+    private static final int[] NUM_CLASSES = new int[]{100, 400, 100};
     private TensorFlowInferenceInterface tfHelper;
     private String name, inputName;
     private boolean feedKeepProb;
@@ -33,7 +33,7 @@ public class TensorFlowClassifier implements Classifier
     @Override
     public Classification recognize(final byte pixels[], int w, int h)
     {
-        tfHelper.feed(inputName, pixels, 1, w, h, 3);
+        tfHelper.feed(inputName, pixels, 1, h, w, 3);
 
         /*if (feedKeepProb)
             tfHelper.feed("keep_prob", new float[]{1});*/
@@ -42,11 +42,13 @@ public class TensorFlowClassifier implements Classifier
 
         tfHelper.fetch(outputNames[0], outputs[0]);
         tfHelper.fetch(outputNames[1], outputs[1]);
+        tfHelper.fetch(outputNames[2], outputs[2]);
 
 
         Classification ans = new Classification();
         Log.d("debug", "class size:"+outputs[0].length);
         Log.d("debug", "box size:"+outputs[1].length);
+        Log.d("debug", "score size:"+outputs[2].length);
 
         /*for (int i = 0; i < outputs[0].length; i++)
         {
@@ -55,7 +57,7 @@ public class TensorFlowClassifier implements Classifier
                 ans.update(outputs[0][i], labels.get(i));
         }*/
 
-        ans.update(outputs[0][0], labels.get((int)(outputs[0][0])), outputs[1]);
+        ans.update(outputs[2][0], labels.get((int)(outputs[0][0])), outputs[1]);
 
         return ans;
     }
@@ -85,9 +87,10 @@ public class TensorFlowClassifier implements Classifier
         tfc.tfHelper = new TensorFlowInferenceInterface(am, modelPath);
         tfc.outputNames = outputNames;
 
-        tfc.outputs = new float[2][];
+        tfc.outputs = new float[3][];
         tfc.outputs[0] = new float[NUM_CLASSES[0]];
         tfc.outputs[1] = new float[NUM_CLASSES[1]];
+        tfc.outputs[2] = new float[NUM_CLASSES[2]];
 
         tfc.feedKeepProb = feedKeepProb;
         return tfc;

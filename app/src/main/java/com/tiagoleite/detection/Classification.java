@@ -28,4 +28,7 @@ public class Classification
         return conf;
     }
 
+    public float[] getBox() {
+        return box;
+    }
 }
