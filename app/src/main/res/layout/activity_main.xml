@@ -29,11 +29,24 @@
     <ImageView
         android:layout_width="match_parent"
         android:layout_height="200dp"
+        android:visibility="gone"
         android:id="@+id/image_view"/>
 
-    <TextureView
-        android:id="@+id/texture_view"
+    <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_height="match_parent">
+
+        <TextureView
+            android:id="@+id/texture_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <ImageView
+            android:layout_width="match_parent"
+            android:id="@+id/iv_detection"
+            android:background="@android:color/transparent"
+            android:layout_height="match_parent" />
+
+    </FrameLayout>
 
 </LinearLayout>

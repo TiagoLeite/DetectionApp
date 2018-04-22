@@ -13,6 +13,8 @@ import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.graphics.SurfaceTexture;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.LayerDrawable;
 import android.hardware.camera2.*;
 import android.hardware.camera2.params.StreamConfigurationMap;
 import android.media.Image;
@@ -54,6 +56,8 @@ public class MainActivity extends AppCompatActivity {
     private CaptureRequest.Builder captureRequestBuilder;
     private TextView textImageLabel;
     private static final int FINAL_W = 1200, FINAL_H = 822;
+    private ImageView imageDetections;
+
 
     CameraDevice.StateCallback stateCallback = new CameraDevice.StateCallback() {
         @Override
@@ -85,12 +89,14 @@ public class MainActivity extends AppCompatActivity {
         ORIENTATIONS.append(Surface.ROTATION_270, 180);
     }
 
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
         textureView = findViewById(R.id.texture_view);
+        imageDetections = findViewById(R.id.iv_detection);
         textImageLabel = findViewById(R.id.tv_label);
 
         textureView.setSurfaceTextureListener(new TextureView.SurfaceTextureListener() {
@@ -195,8 +201,14 @@ public class MainActivity extends AppCompatActivity {
                         float[] box = cls.getBox();
                         Log.d("debug", "Res:" + label + " "+ cls.getConf());
 
-                        Canvas tempCanvas = new Canvas(bm);
-                        tempCanvas.drawBitmap(bm, 0, 0, null);
+                        final Bitmap bitmap = Bitmap.createBitmap(
+                                imageDetections.getWidth(), // Width
+                                imageDetections.getHeight(), // Height
+                                Bitmap.Config.ARGB_8888 // Config
+                        );
+
+                        Canvas tempCanvas = new Canvas(bitmap);
+                        tempCanvas.drawBitmap(bitmap, 0, 0, null);
                         Paint paint = new Paint();
                         paint.setColor(Color.TRANSPARENT);
                         paint.setStyle(Paint.Style.FILL);
@@ -211,18 +223,18 @@ public class MainActivity extends AppCompatActivity {
                         paint.setColor(Color.RED);
                         paint.setStyle(Paint.Style.STROKE);
                         // BORDER
-                        tempCanvas.drawRect(box[1]*(float)bm.getWidth(),
-                                box[0]*(float)bm.getHeight(),
-                                box[3]*(float)bm.getWidth(),
-                                box[2]*(float)bm.getHeight(), paint);
+                        tempCanvas.drawRect(box[1]*(float)bitmap.getWidth(),
+                                box[0]*(float)bitmap.getHeight(),
+                                box[3]*(float)bitmap.getWidth(),
+                                box[2]*(float)bitmap.getHeight(), paint);
 
                         final Bitmap ff = bm;
                         runOnUiThread(new Runnable() {
 
                             @Override
                             public void run() {
-                                ImageView imageView = findViewById(R.id.image_view);
-                                imageView.setImageBitmap(ff);
+                                //ImageView imageView = findViewById(R.id.image_view);
+                                imageDetections.setImageBitmap(bitmap);
                                 textImageLabel.setText(label);
                             }
                         });
