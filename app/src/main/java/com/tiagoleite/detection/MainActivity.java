@@ -126,8 +126,27 @@ public class MainActivity extends AppCompatActivity {
 
         findViewById(R.id.button).setOnClickListener(new View.OnClickListener() {
             @Override
-            public void onClick(View v) {
-                getFrame();
+            public void onClick(View v)
+            {
+                new Thread(new Runnable() {
+                    @Override
+                    public void run()
+                    {
+                        int x = 0;
+                        while(true)
+                        {
+                            try
+                            {
+                                getFrame();
+                                Thread.sleep(2000);
+                            }
+                            catch (Exception e)
+                            {
+
+                            }
+                        }
+                    }
+                }).start();
             }
         });
 
@@ -135,7 +154,6 @@ public class MainActivity extends AppCompatActivity {
         Classification cls = tfClassifier.recognize(arrayImage);
         String label = cls.getLabel();*/
         //Log.d("debug", label);
-
 
     }
 
@@ -191,8 +209,7 @@ public class MainActivity extends AppCompatActivity {
 
                         bm = Bitmap.createBitmap(bm, 0, 0, bm.getWidth(), bm.getHeight(), matrix, true);
 
-                        /*bm = Bitmap.createScaledBitmap(bm, bm.getWidth()/2, bm.getHeight()/2,
-                                true);*/
+                        bm = Bitmap.createScaledBitmap(bm, bm.getWidth()/16, bm.getHeight()/16, true);
 
                         byte[] arrayImage = getPixelsArray(bm);
 
@@ -212,12 +229,6 @@ public class MainActivity extends AppCompatActivity {
                         Paint paint = new Paint();
                         paint.setColor(Color.TRANSPARENT);
                         paint.setStyle(Paint.Style.FILL);
-
-                        // FILL
-                        /*tempCanvas.drawRect(box[1]*(float)bm.getWidth(),
-                                box[0]*(float)bm.getHeight(),
-                                box[3]*(float)bm.getWidth(),
-                                box[0]*(float)bm.getHeight(), paint);*/
 
                         paint.setStrokeWidth(10);
                         paint.setColor(Color.RED);
