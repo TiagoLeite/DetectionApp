@@ -132,7 +132,6 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void run()
                     {
-                        int x = 0;
                         while(true)
                         {
                             try
@@ -195,61 +194,67 @@ public class MainActivity extends AppCompatActivity {
                     {
                         image = reader.acquireLatestImage();
                         ByteBuffer buffer = image.getPlanes()[0].getBuffer();
-                        byte [] bytes = new byte[buffer.capacity()];
+                        final byte [] bytes = new byte[buffer.capacity()];
                         buffer.get(bytes);
 
-                        Matrix matrix = new Matrix();
+                        final Matrix matrix = new Matrix();
                         matrix.postRotate(90);
-                        BitmapFactory.Options opt = new BitmapFactory.Options();
+                        final BitmapFactory.Options opt = new BitmapFactory.Options();
                         opt.inScaled = false;
                         opt.inPremultiplied = false;
                         opt.inMutable = true;
 
-                        Bitmap bm = BitmapFactory.decodeByteArray(bytes, 0, bytes.length, opt);
-
-                        bm = Bitmap.createBitmap(bm, 0, 0, bm.getWidth(), bm.getHeight(), matrix, true);
-
-                        bm = Bitmap.createScaledBitmap(bm, bm.getWidth()/16, bm.getHeight()/16, true);
-
-                        byte[] arrayImage = getPixelsArray(bm);
-
-                        Classification cls = tfClassifier.recognize(arrayImage, bm.getWidth(), bm.getHeight());
-                        final String label = cls.getLabel() + " " + cls.getConf();
-                        float[] box = cls.getBox();
-                        Log.d("debug", "Res:" + label + " "+ cls.getConf());
-
-                        final Bitmap bitmap = Bitmap.createBitmap(
-                                imageDetections.getWidth(), // Width
-                                imageDetections.getHeight(), // Height
-                                Bitmap.Config.ARGB_8888 // Config
-                        );
-
-                        Canvas tempCanvas = new Canvas(bitmap);
-                        tempCanvas.drawBitmap(bitmap, 0, 0, null);
-                        Paint paint = new Paint();
-                        paint.setColor(Color.TRANSPARENT);
-                        paint.setStyle(Paint.Style.FILL);
-
-                        paint.setStrokeWidth(10);
-                        paint.setColor(Color.RED);
-                        paint.setStyle(Paint.Style.STROKE);
-                        // BORDER
-                        tempCanvas.drawRect(box[1]*(float)bitmap.getWidth(),
-                                box[0]*(float)bitmap.getHeight(),
-                                box[3]*(float)bitmap.getWidth(),
-                                box[2]*(float)bitmap.getHeight(), paint);
-
-                        final Bitmap ff = bm;
-                        runOnUiThread(new Runnable() {
-
+                        new Thread(new Runnable() {
                             @Override
                             public void run() {
-                                //ImageView imageView = findViewById(R.id.image_view);
-                                imageDetections.setImageBitmap(bitmap);
-                                textImageLabel.setText(label);
+
+                                Bitmap bm = BitmapFactory.decodeByteArray(bytes, 0, bytes.length, opt);
+
+                                bm = Bitmap.createBitmap(bm, 0, 0, bm.getWidth(), bm.getHeight(), matrix, true);
+
+                                bm = Bitmap.createScaledBitmap(bm, bm.getWidth()/16, bm.getHeight()/16, true);
+
+                                final byte[] arrayImage = getPixelsArray(bm);
+
+                                Classification cls = tfClassifier.recognize(arrayImage, bm.getWidth(), bm.getHeight());
+                                final String label = cls.getLabel() + " " + cls.getConf();
+                                float[] box = cls.getBox();
+                                Log.d("debug", "Res:" + label + " "+ cls.getConf());
+
+                                final Bitmap bitmap = Bitmap.createBitmap(
+                                        imageDetections.getWidth(), // Width
+                                        imageDetections.getHeight(), // Height
+                                        Bitmap.Config.ARGB_8888 // Config
+                                );
+
+                                Canvas tempCanvas = new Canvas(bitmap);
+                                tempCanvas.drawBitmap(bitmap, 0, 0, null);
+                                Paint paint = new Paint();
+                                paint.setColor(Color.TRANSPARENT);
+                                paint.setStyle(Paint.Style.FILL);
+
+                                paint.setStrokeWidth(10);
+                                paint.setColor(Color.RED);
+                                paint.setStyle(Paint.Style.STROKE);
+                                // BORDER
+                                tempCanvas.drawRect(box[1]*(float)bitmap.getWidth(),
+                                        box[0]*(float)bitmap.getHeight(),
+                                        box[3]*(float)bitmap.getWidth(),
+                                        box[2]*(float)bitmap.getHeight(), paint);
+
+                                runOnUiThread(new Runnable() {
+
+                                    @Override
+                                    public void run() {
+                                        //ImageView imageView = findViewById(R.id.image_view);
+                                        imageDetections.setImageBitmap(bitmap);
+                                        textImageLabel.setText(label);
+                                    }
+                                });
+                                //save(bytes);
+
                             }
-                        });
-                        //save(bytes);
+                        }).start();
                     }
                     catch (Exception e)
                     {
