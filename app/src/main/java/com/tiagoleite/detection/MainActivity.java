@@ -121,7 +121,6 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-
         loadModel();
 
         findViewById(R.id.button).setOnClickListener(new View.OnClickListener() {
@@ -132,17 +131,14 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void run()
                     {
-                        while(true)
+                        try
                         {
-                            try
-                            {
-                                getFrame();
-                                Thread.sleep(2000);
-                            }
-                            catch (Exception e)
-                            {
+                            getFrame();
+                            Thread.sleep(2000);
+                        }
+                        catch (Exception e)
+                        {
 
-                            }
                         }
                     }
                 }).start();
@@ -212,11 +208,15 @@ public class MainActivity extends AppCompatActivity {
 
                                 bm = Bitmap.createBitmap(bm, 0, 0, bm.getWidth(), bm.getHeight(), matrix, true);
 
-                                bm = Bitmap.createScaledBitmap(bm, bm.getWidth()/16, bm.getHeight()/16, true);
+                                bm = Bitmap.createScaledBitmap(bm, 512, 512,
+                                        true);
 
-                                final byte[] arrayImage = getPixelsArray(bm);
+                                final float[] arrayImage = getPixelsArrayAsFloat(bm);
+
+                                Log.d("debug", bm.getWidth() + " " + bm.getHeight());
 
                                 Classification cls = tfClassifier.recognize(arrayImage, bm.getWidth(), bm.getHeight());
+
                                 final String label = cls.getLabel() + " " + cls.getConf();
                                 float[] box = cls.getBox();
                                 Log.d("debug", "Res:" + label + " "+ cls.getConf());
@@ -430,15 +430,42 @@ public class MainActivity extends AppCompatActivity {
         return pixelsRet;
     }
 
+    public float[] getPixelsArrayAsFloat(Bitmap bm)
+    {
+        int h = bm.getHeight();
+        int w = bm.getWidth();
+        int pixels[] = new int[h*w];
+        float[] pixelsRet = new float[h*w*3];
+        bm.getPixels(pixels, 0, w, 0, 0, w, h);
+
+        int cont=0;
+
+        for (int i = 0; i < h; i++)
+            for (int j = 0; j < w; j++)
+            {
+                int redValue = Color.red(pixels[i * w + j]);
+                int blueValue = Color.blue(pixels[i * w + j]);
+                int greenValue = Color.green(pixels[i * w + j]);
+                pixelsRet[cont++] = (float)redValue ;
+                pixelsRet[cont++] = (float)greenValue;
+                pixelsRet[cont++] = (float)blueValue;
+            }
+
+        return pixelsRet;
+    }
+
     private void loadModel()
     {
-        String[] tensorNames = new String[]{"detection_classes:0", "detection_boxes:0", "detection_scores:0"};
+        //String[] tensorNames = new String[]{"detection_classes:0", "detection_boxes:0", "detection_scores:0"};
+        String[] tensorNames = new String[]{"filtered_detections/map/TensorArrayStack/TensorArrayGatherV3:0",
+                "filtered_detections/map/TensorArrayStack_1/TensorArrayGatherV3:0",
+                "filtered_detections/map/TensorArrayStack_2/TensorArrayGatherV3:0"};
         try
         {
             tfClassifier = TensorFlowClassifier.create(getAssets(), "TensorFlow",
-                    "frozen_inference_graph.pb",
+                    "pb_model.pb",
                     "labels.txt",
-                    "image_tensor:0",
+                    "input_1:0",
                     tensorNames,
                     true);
         }

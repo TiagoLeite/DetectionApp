@@ -17,13 +17,14 @@ import java.util.Map;
 public class TensorFlowClassifier implements Classifier
 {
     private static final float THRESHOLD = 0.1f;
-    private static final int[] NUM_CLASSES = new int[]{100, 400, 100};
+    private static final int[] NUM_CLASSES = new int[]{1200, 1200, 1200};
     private TensorFlowInferenceInterface tfHelper;
     private String name, inputName;
     private boolean feedKeepProb;
     private SparseArray<String> labels;
     private float[][] outputs;
     private String[] outputNames;
+    private int[] outputInt;
 
     @Override
     public String name() {
@@ -31,7 +32,7 @@ public class TensorFlowClassifier implements Classifier
     }
 
     @Override
-    public Classification recognize(final byte pixels[], int w, int h)
+    public Classification recognize(final float[] pixels, int w, int h)
     {
         tfHelper.feed(inputName, pixels, 1, h, w, 3);
 
@@ -42,13 +43,13 @@ public class TensorFlowClassifier implements Classifier
 
         tfHelper.fetch(outputNames[0], outputs[0]);
         tfHelper.fetch(outputNames[1], outputs[1]);
-        tfHelper.fetch(outputNames[2], outputs[2]);
+        tfHelper.fetch(outputNames[2], outputInt);
 
 
         Classification ans = new Classification();
         Log.d("debug", "class size:"+outputs[0].length);
         Log.d("debug", "box size:"+outputs[1].length);
-        Log.d("debug", "score size:"+outputs[2].length);
+        Log.d("debug", "score size:"+outputInt.length);
 
         /*for (int i = 0; i < outputs[0].length; i++)
         {
@@ -91,6 +92,8 @@ public class TensorFlowClassifier implements Classifier
         tfc.outputs[0] = new float[NUM_CLASSES[0]];
         tfc.outputs[1] = new float[NUM_CLASSES[1]];
         tfc.outputs[2] = new float[NUM_CLASSES[2]];
+
+        tfc.outputInt = new int[NUM_CLASSES[2]];
 
         tfc.feedKeepProb = feedKeepProb;
         return tfc;
